@@ -2,6 +2,7 @@ package service
 
 import (
 	"address-validation/pkg/model"
+	"address-validation/pkg/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -12,15 +13,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var SysAddressSuccessRes model.SysAddressRes
+var SystemError error
+
 func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddressReq) {
 
-	// var expAddressReq model.ExpAddressReq
-	// if err := c.BindJSON(&expAddressReq); err != nil {
-	// 	//return
-	// }
-
 	var sysAddressInfo model.SysAddressInfo
-
 	sysAddressInfo.Addressline1 = expAddressReq.Addresses[0].Address.Addressline1
 	sysAddressInfo.Addressline2 = expAddressReq.Addresses[0].Address.Addressline2
 	sysAddressInfo.Cityname = expAddressReq.Addresses[0].Address.City
@@ -29,9 +27,8 @@ func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddress
 	pbuff := new(bytes.Buffer)
 	json.NewEncoder(pbuff).Encode(sysAddressInfo)
 
-	url := "http://localhost:9000/api/common/v1/addresses"
-
-	req, err := http.NewRequest("POST", url, pbuff)
+	av_url := "http://" + util.ContextProperty.BackendHost + "/" + util.ContextProperty.BackendPath
+	req, err := http.NewRequest("POST", av_url, pbuff)
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -41,9 +38,11 @@ func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddress
 	req.Header.Add("Content-Type", "application/json")
 	//timeout settings
 	var myClient = &http.Client{Timeout: 10 * time.Second}
-	res, err := myClient.Do(req)
-	if err != nil {
-		fmt.Print(err.Error())
+	res, SysErr := myClient.Do(req)
+
+	if SysErr != nil {
+		SystemError = SysErr
+		fmt.Print(SysErr.Error())
 		return
 	}
 
@@ -54,18 +53,15 @@ func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddress
 	if readerr != nil {
 		fmt.Println(readerr.Error())
 		fmt.Println(body)
-		//return
 	}
 
 	var sysAddressRes model.SysAddressRes
+
 	errResp := json.Unmarshal(body, &sysAddressRes)
-	//fmt.Println(json.Unmarshal(body, &sysAddressRes))
-	//fmt.Println("--final response-->")
-	//fmt.Println(sysAddressRes)
 
 	if errResp != nil {
 		return
 	}
-
+	SysAddressSuccessRes = sysAddressRes
 	c.IndentedJSON(http.StatusCreated, sysAddressRes)
 }

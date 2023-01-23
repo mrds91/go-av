@@ -12,12 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddressReq) {
+var SysAddressSuccessRes model.SysAddressRes
+var SystemError error
 
-	// var expAddressReq model.ExpAddressReq
-	// if err := c.BindJSON(&expAddressReq); err != nil {
-	// 	//return
-	// }
+func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddressReq) {
 
 	var sysAddressInfo model.SysAddressInfo
 
@@ -41,9 +39,11 @@ func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddress
 	req.Header.Add("Content-Type", "application/json")
 	//timeout settings
 	var myClient = &http.Client{Timeout: 10 * time.Second}
-	res, err := myClient.Do(req)
-	if err != nil {
-		fmt.Print(err.Error())
+	res, SysErr := myClient.Do(req)
+
+	if SysErr != nil {
+		SystemError = SysErr
+		fmt.Print(SysErr.Error())
 		return
 	}
 
@@ -58,14 +58,12 @@ func CallAddressValidationService(c *gin.Context, expAddressReq model.ExpAddress
 	}
 
 	var sysAddressRes model.SysAddressRes
+
 	errResp := json.Unmarshal(body, &sysAddressRes)
-	//fmt.Println(json.Unmarshal(body, &sysAddressRes))
-	//fmt.Println("--final response-->")
-	//fmt.Println(sysAddressRes)
 
 	if errResp != nil {
 		return
 	}
-
+	SysAddressSuccessRes = sysAddressRes
 	c.IndentedJSON(http.StatusCreated, sysAddressRes)
 }
